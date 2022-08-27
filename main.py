@@ -179,6 +179,8 @@ class Ui_MainWindow(object):
         self.menuBOT.setTitle(_translate("MainWindow", "Author : Akhil Raj S"))
         
     def pass_to_collect_data(self):
+        self.fail_names.clear()
+        self.fail_numbers.clear()
         cd = threading.Thread(target = lambda:collect_data(self))
         cd.start()
     
@@ -187,10 +189,13 @@ class Ui_MainWindow(object):
         ocf.start()
         
     def pass_to_send_invites(self):
+        global send
         si = threading.Thread(target = lambda:send_invites(self))
         si.start()
         
     def log(self,log_data):
+        from time import sleep
+        sleep(0.2)
         self.activity_log.moveCursor(QTextCursor.End)
         self.activity_log.append(log_data)
         self.activity_log.ensureCursorVisible()
@@ -211,7 +216,13 @@ def send_invites(self):
         from urllib.parse import quote
         from requests import get
         from time import strftime
+        from time import sleep
         from pyautogui import alert
+        from pyautogui import hotkey
+        from pyautogui import keyDown
+        from pyautogui import click
+        from pyautogui import moveTo
+        from pyautogui import size
     except Exception as e:
         self.log("[!!!] ERROR occured during importing modules")
         self.log("[!!!] ERROR : " + str(e))
@@ -219,10 +230,13 @@ def send_invites(self):
     try:
         menu_xpath_url = "https://raw.githubusercontent.com/akhilrajs/bulk-inviter-BOT/main/resources/xpaths/menu.txt"
         click_btn_xpath_url = "https://raw.githubusercontent.com/akhilrajs/bulk-inviter-BOT/main/resources/xpaths/click_btn.txt"
+        crop_xpath_url = "https://raw.githubusercontent.com/akhilrajs/bulk-inviter-BOT/main/resources/xpaths/crop.txt"
         data_menu_xpath = get(menu_xpath_url)
         data_click_btn_xpath = get(click_btn_xpath_url)
+        data_crop_xpath = get(crop_xpath_url)
         menu_xpath = data_menu_xpath.text
         click_btn_xpath = data_click_btn_xpath.text
+        crop_xpath = data_crop_xpath.text
         self.log("[#] XPATHS downloaded")
     except Exception as e:
         self.log("[!!!] ERROR while downloading xpaths ")
@@ -241,7 +255,8 @@ def send_invites(self):
         options = Options()
         options.add_experimental_option("excludeSwitches", ["enable-logging"])
         options.add_argument("--profile-directory=Default")
-        options.add_argument("--user-data-dir=C:\\User\\Data\\Default")
+        options_d = cd + "/resources/User/Data/Default"
+        options.add_argument("--user-data-dir=" + str(options_d))
         self.log("[#] opening Google-Chrome")
         driver = webdriver.Chrome(ChromeDriverManager().install(),chrome_options=options)
     except ValueError:
@@ -252,27 +267,98 @@ def send_invites(self):
         self.log("[!!!] ERROR : Mozilla Firefoz not installed in the system")
         self.log("[#] opening Microsoft Edge")
         driver = webdriver.Edge(EdgeChromiumDriverManager().install())
-    self.log("[#] logging into Whatsapp")
-    alert("Once Whatsapp is opened Log into Whatsapp")
+    self.log("[#] If not logged into Whatsapp, Login by scaning QR code")
     driver.get('https://web.whatsapp.com')
     delay = 60
     try:
         menu = WebDriverWait(driver, delay).until(EC.element_to_be_clickable((By.XPATH, menu_xpath))) 
-        self.log("[#] logged in to Whatsapp")
+        self.log("[#] logged into Whatsapp")
+        self.log("[##=>] DO NOT USE THE MOUSE OR KEYBOARD !!!")
     except Exception as e:
         self.log("[!!!] ERROR while logging into Whatsapp")
         self.log("[!!!] The system may not be connected to the Internet")
         self.log("[!!!] try again")
         sys.exit(app.exec_())
     failed_list = []
-    
+    startfile(cd + "/resources/file")
+    sleep(2)
+    hotkey('ctrl', 'a')
+    hotkey('ctrl', 'c')
+    hotkey('alt', 'f4')
+    sleep(5)
+    hotkey('win','left')                   
+    x,y = size()
+    x,y=int(str(x)),int(str(y))
+    l1 = (695/1920)*x
+    b1 = (986/1080)*y
+    moveTo(l1,b1)
+    click()
+    sleep(2)
     for idx, number in enumerate(nums):
         number = number.strip()
-        
-   
-
+        if number =="":
+            continue
+        self.log('[#>]  {}/{} => Sending message to {}.'.format((idx+1), total_numbers, number))
+        try:
+            msg = ""
+            msg = greet + str(names[idx]).title() + '''
+            
+            ''' + str(cap)
+            url = 'https://web.whatsapp.com/send?phone='+ cc + number + '&text=' + msg
+            sleep(2)
+            send = False
+            for i in range(3):
+                if send != True:
+                    driver.get(url)
+                    try:
+                        click_btn = WebDriverWait(driver, delay).until(EC.element_to_be_clickable((By.XPATH, click_btn_xpath)))
+                    except Exception as e :
+                        self.log(f"\nFailed to send message to: {number}, retry ({i+1}/3)")
+                        self.log("[#] Make sure your computer is connected to the Internet")
+                        self.log("[#] ERROR : " +  str(e))
+                        failed_list.append(number)
+                    else:
+                        x,y = size()
+                        x,y=int(str(x)),int(str(y))
+                        l1 = (695/1920)*x
+                        b1 = (986/1080)*y
+                        moveTo(l1,b1)
+                        sleep(2)
+                        click()
+                        hotkey('ctrl','v')
+                        sleep(2)
+                        crop =  WebDriverWait(driver, delay).until(EC.element_to_be_clickable((By.XPATH, crop_xpath)))
+                        keyDown("enter")
+                        sleep(0.2)
+                        sleep(1)
+                        send=True
+                        sleep(3)
+                        self.log("[#] " + 'Message sent to: ' + number + " " + names[idx].title())
+        except Exception as e :
+            self.log('Failed to send message to ' + number + str(e) )
+            failed_list.append(number)
+    fail_numbers = []
+    for i in failed_list:
+        if i in fail_numbers:
+            i =""
+        else:
+            fail_numbers.append(i)
+    fail_names = []
+    for number in fail_numbers:
+        idx = nums.index(number)
+        name = names[idx]
+        fail_names.append(name)
+    for n in fail_names:
+        self.fail_names.append(n)
+        idx = int(fail_names.index(n))
+        number = fail_numbers[idx]
+        self.fail_numbers.append(number)
+    self.log("[##] closing browser in 10 seconds")
+    sleep(10)
+    driver.close()
 
 def collect_data(self):
+    global cc, cap
     cc = str(self.country_code.text())
     self.log("[#] country code : " + str(cc))
     cap = str(self.caption.toPlainText())
@@ -298,13 +384,24 @@ def collect_data(self):
         self.log("[!!!] enter the location and try again")
         sys.exit(app.exec_())
     self.log("[#] invitation file loaded")
+    from os import remove
+    from os import listdir
+    folder = cd + "/resources/file/"
+    files = listdir(folder)
+    for file in files:
+        remove(str(folder) + str(file))
+        self.log("[#] old files cleared ...")
     try:
         self.log("[#] importing shutil module")
         from shutil import copy
         source = file_d
         destination = str(cd) + "/resources/file/"
-        shutil(source,destination)
-        self.log("[#] file copied to ")
+        copy(source,destination)
+        self.log("[#] file copied to /resources/file/")
+    except Exception as e :
+        self.log("[!!!] ERROR while copying the invitation file")
+        self.log("[!!!] check the address of the file and try again")
+        sys.exit(app.exec_())
     self.pass_to_send_invites()
     
     
