@@ -17,7 +17,12 @@ A Whatsapp Bot to send invitation to multiple recipients automatically without n
 
 ## Requirements (Modules):
 ~~~
-
+pip install PyQt5
+pip install selenium
+pip install webdriver-manager
+pip install urllib3
+pip install requests
+pip install pyautogui
 ~~~
 
 ## File Structure 
